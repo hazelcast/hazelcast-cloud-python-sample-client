@@ -12,7 +12,7 @@ if __name__ == "__main__":
     config.network_config.ssl_config.cafile = os.path.abspath("ca.pem")
     config.network_config.ssl_config.certfile = os.path.abspath("cert.pem")
     config.network_config.ssl_config.keyfile = os.path.abspath("key.pem")
-    config.network_config.ssl_config.password = "YOUR_TLS_PASSWORD"
+    config.network_config.ssl_config.password = "YOUR_SSL_PASSWORD"
 
     # Set up group name and password for authentication
     config.group_config.name = "YOUR_CLUSTER_NAME"
