@@ -1,6 +1,7 @@
 import hazelcast
 import logging
-import os
+import random
+import time
 
 if __name__ == "__main__":
     logging.basicConfig()
@@ -20,9 +21,21 @@ if __name__ == "__main__":
     # Start a new Hazelcast client with this configuration.
     client = hazelcast.HazelcastClient(config)
 
-    my_map = client.get_map("map-on-the-cloud")
-    my_map.put("key", "hazelcast.cloud")
+    my_map = client.get_map("map").blocking()
+    my_map.put("key", "value")
 
-    print(my_map.get("key"))
+    if my_map.get("key") == "value":
+        print("Connection Successful!")
+        print("Now, `map` will be filled with random entries.");
+        while True:
+            random_key = random.randint(1, 100000)
+            my_map.put("key" + str(random_key), "value" + str(random_key))
+            my_map.get("key" + str(random.randint(1,100000)))
+            if random_key % 10 == 0:
+                print("Map size:" + str(my_map.size()))
+            time.sleep(0.1)
+    else:
+        raise Exception("Connection failed, check your configuration.")
+
 
     client.shutdown()
