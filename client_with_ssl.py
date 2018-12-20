@@ -1,6 +1,8 @@
 import hazelcast
 import logging
 import os
+import random
+import time
 
 if __name__ == "__main__":
 
@@ -41,6 +43,5 @@ if __name__ == "__main__":
             time.sleep(0.1)
     else:
         raise Exception("Connection failed, check your configuration.")
-
 
     client.shutdown()
