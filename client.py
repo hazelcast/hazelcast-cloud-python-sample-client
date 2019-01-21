@@ -1,7 +1,6 @@
 import hazelcast
 import logging
 import random
-import time
 
 if __name__ == "__main__":
     logging.basicConfig()
@@ -33,7 +32,6 @@ if __name__ == "__main__":
             my_map.get("key" + str(random.randint(1,100000)))
             if random_key % 10 == 0:
                 print("Map size:" + str(my_map.size()))
-            time.sleep(0.1)
     else:
         raise Exception("Connection failed, check your configuration.")
 
