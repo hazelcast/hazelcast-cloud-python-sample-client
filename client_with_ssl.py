@@ -3,6 +3,13 @@ import logging
 import os
 import random
 
+
+"""
+This is boilerplate application that configures client to connect Hazelcast Cloud cluster.
+After successful connection, it puts random entries into the map.
+
+See: https://docs.hazelcast.cloud/docs/python-client
+"""
 if __name__ == "__main__":
 
     logging.basicConfig()
