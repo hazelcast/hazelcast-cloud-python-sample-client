@@ -1,1 +1,1 @@
-hazelcast-python-client==3.12.3
+hazelcast-python-client==3.11
