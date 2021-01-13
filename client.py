@@ -8,38 +8,27 @@ After successful connection, it puts random entries into the map.
 
 See: https://docs.hazelcast.cloud/docs/python-client
 """
-if __name__ == "__main__":
-    logging.basicConfig()
-    logging.getLogger().setLevel(logging.INFO)
 
-    config = hazelcast.ClientConfig()
+logging.basicConfig(level=logging.INFO)
 
-    # Set up group name and password for authentication
-    config.group_config.name = "YOUR_CLUSTER_NAME"
-    config.group_config.password = "YOUR_CLUSTER_PASSWORD"
+client = hazelcast.HazelcastClient(
+    cluster_name="YOUR_CLUSTER_NAME",
+    cloud_discovery_token="YOUR_CLUSTER_DISCOVERY_TOKEN",
+)
 
-    # Enable Hazelcast.Cloud configuration and set the token of your cluster.
-    config.network_config.cloud_config.enabled = True
-    config.network_config.cloud_config.discovery_token = "YOUR_CLUSTER_DISCOVERY_TOKEN"
-    config.set_property("hazelcast.client.cloud.url", "YOUR_DISCOVERY_URL")
+my_map = client.get_map("map").blocking()
+my_map.put("key", "value")
 
-    # Start a new Hazelcast client with this configuration.
-    client = hazelcast.HazelcastClient(config)
-
-    my_map = client.get_map("map").blocking()
-    my_map.put("key", "value")
-
-    if my_map.get("key") == "value":
-        print("Connection Successful!")
-        print("Now, `map` will be filled with random entries.");
-        while True:
-            random_key = random.randint(1, 100000)
-            my_map.put("key" + str(random_key), "value" + str(random_key))
-            my_map.get("key" + str(random.randint(1,100000)))
-            if random_key % 10 == 0:
-                print("Map size:" + str(my_map.size()))
-    else:
-        raise Exception("Connection failed, check your configuration.")
-
-
+if my_map.get("key") == "value":
+    print("Successfully connected!")
+    print("Now, 'map' will be filled with random entries.")
+    while True:
+        random_key = random.randint(1, 100000)
+        random_key_str = str(random_key)
+        my_map.put("key" + random_key_str, "value" + random_key_str)
+        my_map.get("key" + random_key_str)
+        if random_key % 10 == 0:
+            print("Map size:", my_map.size())
+else:
     client.shutdown()
+    raise Exception("Connection failed, check your configuration.")
