@@ -1,7 +1,7 @@
 import hazelcast
 import logging
 import random
-
+from hazelcast.discovery import HazelcastCloudDiscovery
 from os.path import abspath
 
 """
@@ -12,10 +12,11 @@ See: https://docs.hazelcast.cloud/docs/python-client
 """
 
 logging.basicConfig(level=logging.INFO)
-
+HazelcastCloudDiscovery._CLOUD_URL_BASE = "YOUR_DISCOVERY_URL"
 client = hazelcast.HazelcastClient(
     cluster_name="YOUR_CLUSTER_NAME",
     cloud_discovery_token="YOUR_CLUSTER_DISCOVERY_TOKEN",
+    statistics_enabled=True,
     ssl_enabled=True,
     ssl_cafile=abspath("ca.pem"),
     ssl_certfile=abspath("cert.pem"),
