@@ -27,10 +27,9 @@ if my_map.get("key") == "value":
 
     iteration_counter = 0
     while True:
-        random_key = random.randint(1, 100000)
-        random_key_str = str(random_key)
-        my_map.put("key" + random_key_str, "value" + random_key_str)
-        my_map.get("key" + random_key_str)
+        random_key = str(random.randint(1, 100000))
+        my_map.put("key" + random_key, "value" + random_key)
+        my_map.get("key" + random_key)
         iteration_counter += 1
         if iteration_counter == 10:
             iteration_counter = 0
