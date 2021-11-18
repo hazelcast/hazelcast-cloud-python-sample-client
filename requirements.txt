@@ -1,1 +1,1 @@
-hazelcast-python-client[stats]~=4.0.0
+hazelcast-python-client[stats]~=5.0.1
