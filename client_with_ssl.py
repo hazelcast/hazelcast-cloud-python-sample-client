@@ -29,9 +29,16 @@ def map_example(my_map):
 def sql_example(hz_client):
     print("Creating a mapping...")
     # See: https://docs.hazelcast.com/hazelcast/5.0/sql/mapping-to-maps
-    mapping_query = "CREATE MAPPING cities TYPE IMap OPTIONS ('keyFormat'='varchar','valueFormat'='varchar')"
-    hz_client.sql.execute(mapping_query)
+    mapping_query = "CREATE OR REPLACE MAPPING cities TYPE IMap " \
+                    "OPTIONS ('keyFormat'='varchar','valueFormat'='varchar')"
+    hz_client.sql.execute(mapping_query).result()
     print("The mapping has been created successfully.")
+    print("--------------------")
+
+    print("Deleting data via SQL...")
+    delete_query = "DELETE FROM cities"
+    hz_client.sql.execute(delete_query).result()
+    print("The data has been deleted successfully.")
     print("--------------------")
 
     print("Inserting data via SQL...")
@@ -44,23 +51,23 @@ def sql_example(hz_client):
     ('Turkey','Ankara'),
     ('United States','Washington, DC');
     """
-    hz_client.sql.execute(insert_query)
+    hz_client.sql.execute(insert_query).result()
     print("The data has been inserted successfully.")
     print("--------------------")
 
     print("Retrieving all the data via SQL...")
     result = hz_client.sql.execute("SELECT * FROM cities").result()
     for row in result:
-        country = row.get_object_with_index(0)
-        city = row.get_object_with_index(1)
+        country = row[0]
+        city = row[1]
         print("%s - %s" % (country, city))
     print("--------------------")
 
     print("Retrieving a city name via SQL...")
     result = hz_client.sql.execute("SELECT __key, this FROM cities WHERE __key = ?", "United States").result()
     for row in result:
-        country = row.get_object("__key")
-        city = row.get_object("this")
+        country = row["__key"]
+        city = row["this"]
         print("Country name: %s; City name: %s" % (country, city))
         print("--------------------")
         exit(0)
@@ -79,17 +86,15 @@ client = hazelcast.HazelcastClient(
     ssl_password="YOUR_SSL_PASSWORD",
 )
 
+
+print("Successfully connected!")
+
 sample_map = client.get_map("map").blocking()
-sample_map.put("key", "value")
 
-if sample_map.get("key") == "value":
-    print("Successfully connected!")
+# the 'map_example' is an example with an infinite loop inside, so if you'd like to try other examples,
+# don't forget to comment out the following line
+map_example(sample_map)
 
-    # the 'map_example' is an example with an infinite loop inside, so if you'd like to try other examples,
-    # don't forget to comment out the following line
-    map_example(sample_map)
+# sql_example(client)
 
-    # sql_example(client)
-else:
-    client.shutdown()
-    raise Exception("Connection failed, check your configuration.")
+client.shutdown()
