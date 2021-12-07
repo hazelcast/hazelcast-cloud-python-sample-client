@@ -1,6 +1,7 @@
 import hazelcast
 import logging
 import random
+from hazelcast.core import HazelcastJsonValue
 from hazelcast.discovery import HazelcastCloudDiscovery
 from os.path import abspath
 
@@ -73,6 +74,138 @@ def sql_example(hz_client):
         exit(0)
 
 
+def json_serialization_example(hz_client):
+    create_mapping_for_countries(hz_client)
+
+    populate_countries_map(hz_client)
+
+    select_all_countries(hz_client)
+
+    create_mapping_for_cities(hz_client)
+
+    populate_city_map(hz_client)
+
+    select_cities_by_country(hz_client, "AU")
+
+    select_countries_and_cities(hz_client)
+    exit(0)
+
+
+def create_mapping_for_countries(hz_client):
+    # see: https://docs.hazelcast.com/hazelcast/5.0/sql/mapping-to-maps#json-objects
+    print("Creating mapping for countries...")
+
+    mapping_query = """
+        CREATE OR REPLACE MAPPING country(
+            __key VARCHAR, 
+            isoCode VARCHAR, 
+            country VARCHAR
+        )
+        TYPE IMap OPTIONS(
+            'keyFormat' = 'varchar',
+            'valueFormat' = 'json-flat'
+        );
+    """
+    hz_client.sql.execute(mapping_query).result()
+    print("Mapping for countries has been created.")
+    print("--------------------")
+
+
+def populate_countries_map(hz_client):
+    # see: https://docs.hazelcast.com/hazelcast/5.0/data-structures/creating-a-map#writing-json-to-a-map
+    print("Populating 'countries' map with JSON values...")
+
+    au = '{"isoCode": "AU", "country": "Australia"}'
+    en = '{"isoCode": "EN", "country": "England"}'
+    us = '{"isoCode": "US", "country": "United States"}'
+    cz = '{"isoCode": "CZ", "country": "Czech Republic"}'
+
+    countries = hz_client.get_map("country").blocking()
+    countries.put("AU", HazelcastJsonValue(au))
+    countries.put("EN", HazelcastJsonValue(en))
+    countries.put("US", HazelcastJsonValue(us))
+    countries.put("CZ", HazelcastJsonValue(cz))
+    print("The 'countries' map has been populated.")
+    print("--------------------")
+
+
+def select_all_countries(hz_client):
+    query = "SELECT c.country from country c"
+    print("Select all countries with sql =", query)
+
+    all_countries_result = hz_client.sql.execute(query).result()
+    for row in all_countries_result:
+        print("country =", row["country"])
+    print("--------------------")
+
+
+def create_mapping_for_cities(hz_client):
+    # see: https://docs.hazelcast.com/hazelcast/5.0/sql/mapping-to-maps#json-objects
+    print("Creating mapping for cities...")
+
+    mapping_query = """
+        CREATE OR REPLACE MAPPING city(
+            __key INT, 
+            country VARCHAR, 
+            city VARCHAR, 
+            population BIGINT
+        ) 
+        TYPE IMap OPTIONS (
+            'keyFormat' = 'int',
+            'valueFormat' = 'json-flat'
+        );
+    """
+
+    hz_client.sql.execute(mapping_query).result()
+    print("Mapping for cities has been created.")
+    print("--------------------")
+
+
+def populate_city_map(hz_client):
+    # see: https://docs.hazelcast.com/hazelcast/5.0/data-structures/creating-a-map#writing-json-to-a-map
+    print("Populating 'city' map with JSON values...")
+
+    cities = hz_client.get_map("city").blocking()
+    au = '{"country": "AU", "city": "Canberra", "population": 354644}'
+    cz = '{"country": "CZ", "city": "Prague", "population": 1227332}'
+    en = '{"country": "EN", "city": "London", "population": 8174100}'
+    us = '{"country": "US", "city": "Washington, DC", "population": 601723}'
+    cities.put(1, HazelcastJsonValue(au))
+    cities.put(2, HazelcastJsonValue(cz))
+    cities.put(3, HazelcastJsonValue(en))
+    cities.put(4, HazelcastJsonValue(us))
+    print("The 'city' map has been populated.")
+    print("--------------------")
+
+
+def select_cities_by_country(hz_client, country):
+    query = "SELECT city, population FROM city where country=?"
+    print("Select city and population with sql = ", query)
+
+    cities_result = hz_client.sql.execute(query, country).result()
+    for row in cities_result:
+        print("city = %s, population = %d" % (row["city"], row["population"]))
+    print("--------------------")
+
+
+def select_countries_and_cities(hz_client):
+    query = """
+        SELECT c.isoCode, c.country, t.city, t.population
+        FROM country c
+        JOIN city t
+        ON c.isoCode = t.country;
+    """
+    print("Select country and city data in query that joins tables")
+
+    join_result = hz_client.sql.execute(query).result()
+    print("%4s | %15s | %20s | %15s |" % ("iso", "country", "city", "population"))
+    print("-----------------------------------------------------------------")
+    for row in join_result:
+        print("%4s | %15s | %20s | %15s |" %
+              (row["isoCode"], row["country"], row["city"], row["population"]))
+    print("-----------------------------------------------------------------")
+
+
 logging.basicConfig(level=logging.INFO)
 HazelcastCloudDiscovery._CLOUD_URL_BASE = "YOUR_DISCOVERY_URL"
 client = hazelcast.HazelcastClient(
@@ -86,7 +219,6 @@ client = hazelcast.HazelcastClient(
     ssl_password="YOUR_SSL_PASSWORD",
 )
 
-
 print("Successfully connected!")
 
 sample_map = client.get_map("map").blocking()
@@ -96,5 +228,7 @@ sample_map = client.get_map("map").blocking()
 map_example(sample_map)
 
 # sql_example(client)
+
+# json_serialization_example(client)
 
 client.shutdown()
