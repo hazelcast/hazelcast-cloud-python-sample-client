@@ -71,7 +71,6 @@ def sql_example(hz_client):
         city = row["this"]
         print("Country name: %s; City name: %s" % (country, city))
         print("--------------------")
-        exit(0)
 
 
 def json_serialization_example(hz_client):
@@ -88,7 +87,6 @@ def json_serialization_example(hz_client):
     select_cities_by_country(hz_client, "AU")
 
     select_countries_and_cities(hz_client)
-    exit(0)
 
 
 def create_mapping_for_countries(hz_client):
