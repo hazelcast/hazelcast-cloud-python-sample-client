@@ -48,18 +48,18 @@ def map_example(client: hazelcast.HazelcastClient):
 
 
 def sql_example(client: hazelcast.HazelcastClient):
-    svc = client.sql
-    create_mapping_for_capitals(svc)
-    clear_capitals(svc)
-    populate_capitals(svc)
-    select_all_capitals(svc)
-    select_capital_names(svc)
+    sql_service = client.sql
+    create_mapping_for_capitals(sql_service)
+    clear_capitals(sql_service)
+    populate_capitals(sql_service)
+    select_all_capitals(sql_service)
+    select_capital_names(sql_service)
 
 
 def create_mapping_for_capitals(sql_service: hazelcast.client.SqlService):
     print("Creating a mapping...")
     # See: https://docs.hazelcast.com/hazelcast/5.1/sql/mapping-to-maps
-    mappingQuery = '''
+    mapping_query = '''
     CREATE OR REPLACE MAPPING capitals
         TYPE IMap
         OPTIONS (
@@ -67,7 +67,7 @@ def create_mapping_for_capitals(sql_service: hazelcast.client.SqlService):
             'valueFormat' = 'varchar'
         )
     '''
-    sql_service.execute(mappingQuery).result()
+    sql_service.execute(mapping_query).result()
     print("-" * 20)
 
 
@@ -80,7 +80,7 @@ def clear_capitals(sql_service: hazelcast.client.SqlService):
 
 def populate_capitals(sql_service: hazelcast.client.SqlService):
     print("Inserting data via SQL...")
-    insertQuery = '''
+    insert_query = '''
         INSERT INTO capitals VALUES
             ('Australia','Canberra'),
             ('Croatia','Zagreb'),
@@ -89,7 +89,7 @@ def populate_capitals(sql_service: hazelcast.client.SqlService):
             ('Turkey','Ankara'),
             ('United States','Washington, DC');
     '''
-    sql_service.execute(insertQuery).result()
+    sql_service.execute(insert_query).result()
     print("-" * 20)
 
 
@@ -114,14 +114,14 @@ def select_capital_names(sql_service: hazelcast.client.SqlService):
 
 
 def json_serialization_example(client):
-    svc = client.sql
-    create_mapping_for_countries(svc)
+    sql_service = client.sql
+    create_mapping_for_countries(sql_service)
     populate_countries_map(client)
-    select_all_countries(svc)
-    create_mapping_for_cities(svc)
+    select_all_countries(sql_service)
+    create_mapping_for_cities(sql_service)
     populate_cities(client)
-    select_cities_by_country(svc, "AU")
-    select_countries_and_cities(svc)
+    select_cities_by_country(sql_service, "AU")
+    select_countries_and_cities(sql_service)
 
 
 def create_mapping_for_countries(sql_service: hazelcast.client.SqlService):
@@ -227,14 +227,14 @@ def select_countries_and_cities(sql_service: hazelcast.client.SqlService):
 def nonstop_map_example(client: hazelcast.HazelcastClient):
     print("Now the map named 'map' will be filled with random entries.")
     map = client.get_map("map").blocking()
-    iterationCounter = 0
+    iteration_counter = 0
     while True:
         randomKey = random.randint(0, 99_999)
         map.put(f"key-{randomKey}", f"value-{randomKey}")
         map.get(f"key-{random.randint(0, 99_999)}")
-        iterationCounter += 1
-        if iterationCounter == 10:
-            iterationCounter = 0
+        iteration_counter += 1
+        if iteration_counter == 10:
+            iteration_counter = 0
             print(f"Current map size: {map.size()}")
 
 
