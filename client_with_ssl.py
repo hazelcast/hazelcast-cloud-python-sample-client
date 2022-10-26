@@ -8,7 +8,6 @@ from hazelcast.discovery import HazelcastCloudDiscovery
 
 """
 This is boilerplate application that configures client to connect Hazelcast Cloud cluster.
-After successful connection, it puts random entries into the map.
 
 See: https://docs.hazelcast.com/cloud/python-client
 """
@@ -229,8 +228,8 @@ def nonstop_map_example(client: hazelcast.HazelcastClient):
     map = client.get_map("map").blocking()
     iteration_counter = 0
     while True:
-        randomKey = random.randint(0, 99_999)
-        map.put(f"key-{randomKey}", f"value-{randomKey}")
+        random_key = random.randint(0, 99_999)
+        map.put(f"key-{random_key}", f"value-{random_key}")
         map.get(f"key-{random.randint(0, 99_999)}")
         iteration_counter += 1
         if iteration_counter == 10:
