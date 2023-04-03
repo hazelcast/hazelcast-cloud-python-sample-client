@@ -18,6 +18,7 @@ import logging
 from unicodedata import numeric
 
 import hazelcast
+from hazelcast import HazelcastClient
 from hazelcast.discovery import HazelcastCloudDiscovery
 from hazelcast.serialization.api import (
     CompactSerializer,
@@ -60,7 +61,7 @@ class CitySeriazlizer(CompactSerializer[City]):
         return City
 
 
-def create_mapping(client: hazelcast.client):
+def create_mapping(client: HazelcastClient):
     print("\nCreating the mapping...")
     # See: https://docs.hazelcast.com/hazelcast/latest/sql/mapping-to-maps
     mapping_query = """
@@ -79,7 +80,7 @@ def create_mapping(client: hazelcast.client):
     print("OK.")
 
 
-def populate_cities(client: hazelcast.client):
+def populate_cities(client: HazelcastClient):
     print("\nInserting data via SQL...")
     insert_query = """
             INSERT INTO cities 
@@ -106,7 +107,7 @@ def populate_cities(client: hazelcast.client):
     print("OK.")
 
 
-def fetch_cities_via_sql(client: hazelcast.client):
+def fetch_cities_via_sql(client: HazelcastClient):
     print("\nFetching cities via SQL...")
     result = client.sql.execute("SELECT __key,this FROM cities").result()
     print("OK.")
