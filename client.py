@@ -97,7 +97,7 @@ def populate_cities(client: hazelcast.client):
         client.sql.execute(insert_query).result()
         print("OK.")
     except hazelcast.sql.HazelcastSqlError as e:
-        print("FAILED. {:s}".format(str(e)))
+        print(f"FAILED. {e!s}")
     
     print("\nPutting a city into 'cities' map...")
     
