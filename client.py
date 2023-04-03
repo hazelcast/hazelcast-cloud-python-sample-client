@@ -14,9 +14,7 @@
  limitations under the License.
  """
 
-from itertools import count
 import logging
-import os
 from unicodedata import numeric
 
 import hazelcast
@@ -35,21 +33,22 @@ the Hazelcast Viridian cluster is successful.
 See: https://docs.hazelcast.com/cloud/get-started
 """
 
+
 class City:
-    def __init__(self, country:str, city:str, population:int) -> None:
+    def __init__(self, country: str, city: str, population: int) -> None:
         self.country = country
         self.city = city
         self.population = population
 
 
 class CitySeriazlizer(CompactSerializer[City]):
-    def read(self, reader:CompactReader):
+    def read(self, reader: CompactReader):
         city = reader.read_string("city")
         country = reader.read_string("country")
         population = reader.read_int32("population")
         return City(country=country, city=city, population=population)
-    
-    def write(self, writer:CompactWriter, obj:City):
+
+    def write(self, writer: CompactWriter, obj: City):
         writer.write_string("country", obj.country)
         writer.write_string("city", obj.city)
         writer.write_int32("population", obj.population)
@@ -64,7 +63,7 @@ class CitySeriazlizer(CompactSerializer[City]):
 def create_mapping(client: hazelcast.client):
     print("\nCreating the mapping...")
     # See: https://docs.hazelcast.com/hazelcast/latest/sql/mapping-to-maps
-    mapping_query = '''
+    mapping_query = """
             CREATE OR REPLACE MAPPING 
                     cities (
                         __key INT,                                        
@@ -75,14 +74,14 @@ def create_mapping(client: hazelcast.client):
                         'keyFormat' = 'int',
                         'valueFormat' = 'compact',
                         'valueCompactTypeName' = 'city')
-    '''
+    """
     client.sql.execute(mapping_query).result()
     print("OK.")
 
 
 def populate_cities(client: hazelcast.client):
     print("\nInserting data via SQL...")
-    insert_query = '''
+    insert_query = """
             INSERT INTO cities 
             (__key, city, country, population) VALUES
             (1, 'London', 'United Kingdom', 9540576),
@@ -92,15 +91,15 @@ def populate_cities(client: hazelcast.client):
             (5, 'Istanbul', 'Türkiye', 15636243),
             (6, 'Ankara', 'Türkiye', 5309690),
             (7, 'Sao Paulo ', 'Brazil', 22429800)
-    '''
+    """
     try:
         client.sql.execute(insert_query).result()
         print("OK.")
     except hazelcast.sql.HazelcastSqlError as e:
         print(f"FAILED. {e!s}")
-    
+
     print("\nPutting a city into 'cities' map...")
-    
+
     # Let's also add a city as object.
     cities = client.get_map("cities").blocking()
     cities.put(8, City("Brazil", "Rio de Janeiro", 13634274))
@@ -113,19 +112,29 @@ def fetch_cities_via_sql(client: hazelcast.client):
     print("OK.")
 
     print("\n--Results of 'SELECT __key, this FROM cities'")
-    print("| {:4s} | {:20s} | {:20s} | {:15s} |".format("id", "country", "city", "population"))
+    print(
+        "| {:4s} | {:20s} | {:20s} | {:15s} |".format(
+            "id", "country", "city", "population"
+        )
+    )
 
     for row in result:
         id = row["__key"]
         city = row["this"]
-        print("| {:4d} | {:20s} | {:20s} | {:15d} |".format(id, city.country, city.city,city.population))       
-    
-    print("""
+        print(
+            "| {:4d} | {:20s} | {:20s} | {:15d} |".format(
+                id, city.country, city.city, city.population
+            )
+        )
+
+    print(
+        """
     !! Hint !! You can execute your SQL queries on your Viridian cluster over the management center.
     1. Go to 'Management Center' of your Hazelcast Viridian cluster.
     2. Open the 'SQL Browser'.
     3. Try to execute 'SELECT * FROM cities'.
-    """)
+    """
+    )
 
 
 logging.basicConfig(level=logging.INFO)
@@ -133,7 +142,7 @@ client = hazelcast.HazelcastClient(
     cluster_name="YOUR_CLUSTER_NAME",
     cloud_discovery_token="YOUR_CLUSTER_DISCOVERY_TOKEN",
     statistics_enabled=True,
-    compact_serializers=[CitySeriazlizer()]
+    compact_serializers=[CitySeriazlizer()],
 )
 print("Connection Successful!")
 
