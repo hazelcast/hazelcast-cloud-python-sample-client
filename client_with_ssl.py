@@ -20,6 +20,7 @@ import typing
 
 import hazelcast
 from hazelcast import HazelcastClient
+from hazelcast.discovery import HazelcastCloudDiscovery
 from hazelcast.serialization.api import CompactReader, CompactSerializer, CompactWriter
 
 """
