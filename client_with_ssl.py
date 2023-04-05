@@ -16,16 +16,11 @@
 
 import logging
 import os
-from unicodedata import numeric
+import typing
 
 import hazelcast
 from hazelcast import HazelcastClient
-from hazelcast.discovery import HazelcastCloudDiscovery
-from hazelcast.serialization.api import (
-    CompactSerializer,
-    CompactWriter,
-    CompactReader,
-)
+from hazelcast.serialization.api import CompactReader, CompactSerializer, CompactWriter
 
 """
 A sample application that configures a client to connect to a Hazelcast Viridian cluster
@@ -43,64 +38,66 @@ class City:
         self.population = population
 
 
-class CitySeriazlizer(CompactSerializer[City]):
-    def read(self, reader: CompactReader):
+class CitySerializer(CompactSerializer[City]):
+    def read(self, reader: CompactReader) -> City:
         city = reader.read_string("city")
         country = reader.read_string("country")
         population = reader.read_int32("population")
-        return City(country=country, city=city, population=population)
+        return City(country, city, population)
 
-    def write(self, writer: CompactWriter, obj: City):
+    def write(self, writer: CompactWriter, obj: City) -> None:
         writer.write_string("country", obj.country)
         writer.write_string("city", obj.city)
         writer.write_int32("population", obj.population)
 
-    def get_type_name(self):
+    def get_type_name(self) -> str:
         return "city"
 
-    def get_class(self):
+    def get_class(self) -> typing.Type[City]:
         return City
 
 
-def create_mapping(client: HazelcastClient):
-    print("\nCreating the mapping...")
+def create_mapping(client: HazelcastClient) -> None:
+    print("Creating the mapping...", end="")
     # See: https://docs.hazelcast.com/hazelcast/latest/sql/mapping-to-maps
     mapping_query = """
-            CREATE OR REPLACE MAPPING 
-                    cities (
-                        __key INT,                                        
-                        country VARCHAR,
-                        city VARCHAR,
-                        population INT) TYPE IMAP
-                    OPTIONS ( 
-                        'keyFormat' = 'int',
-                        'valueFormat' = 'compact',
-                        'valueCompactTypeName' = 'city')
+        CREATE OR REPLACE MAPPING 
+            cities (
+                __key INT,                                        
+                country VARCHAR,
+                city VARCHAR,
+                population INT) TYPE IMAP
+            OPTIONS ( 
+                'keyFormat' = 'int',
+                'valueFormat' = 'compact',
+                'valueCompactTypeName' = 'city')
     """
     client.sql.execute(mapping_query).result()
     print("OK.")
 
 
-def populate_cities(client: HazelcastClient):
-    print("\nInserting data via SQL...")
+def populate_cities(client: HazelcastClient) -> None:
+    print("Inserting data via SQL...", end="")
+
     insert_query = """
-            INSERT INTO cities 
-            (__key, city, country, population) VALUES
-            (1, 'London', 'United Kingdom', 9540576),
-            (2, 'Manchester', 'United Kingdom', 2770434),
-            (3, 'New York', 'United States', 19223191),
-            (4, 'Los Angeles', 'United States', 3985520),
-            (5, 'Istanbul', 'Türkiye', 15636243),
-            (6, 'Ankara', 'Türkiye', 5309690),
-            (7, 'Sao Paulo ', 'Brazil', 22429800)
+        INSERT INTO cities 
+        (__key, city, country, population) VALUES
+        (1, 'London', 'United Kingdom', 9540576),
+        (2, 'Manchester', 'United Kingdom', 2770434),
+        (3, 'New York', 'United States', 19223191),
+        (4, 'Los Angeles', 'United States', 3985520),
+        (5, 'Istanbul', 'Türkiye', 15636243),
+        (6, 'Ankara', 'Türkiye', 5309690),
+        (7, 'Sao Paulo ', 'Brazil', 22429800)
     """
+
     try:
         client.sql.execute(insert_query).result()
         print("OK.")
-    except hazelcast.sql.HazelcastSqlError as e:
-        print("FAILED. {:s}".format(str(e)))
+    except Exception as e:
+        print(f"FAILED: {e!s}.")
 
-    print("\nPutting a city into 'cities' map...")
+    print("Putting a city into 'cities' map...", end="")
 
     # Let's also add a city as object.
     cities = client.get_map("cities").blocking()
@@ -108,38 +105,31 @@ def populate_cities(client: HazelcastClient):
     print("OK.")
 
 
-def fetch_cities_via_sql(client: HazelcastClient):
-    print("\nFetching cities via SQL...")
-    result = client.sql.execute("SELECT __key,this FROM cities").result()
+def fetch_cities_via_sql(client: HazelcastClient) -> None:
+    print("Fetching cities via SQL...", end="")
+    result = client.sql.execute("SELECT __key, this FROM cities").result()
     print("OK.")
 
-    print("\n--Results of 'SELECT __key, this FROM cities'")
-    print(
-        "| {:4s} | {:20s} | {:20s} | {:15s} |".format(
-            "id", "country", "city", "population"
-        )
-    )
+    print("--Results of 'SELECT __key, this FROM cities'")
+    print(f"| {'id':>4} | {'country':<20} | {'city':<20} | {'population':<15} |")
 
     for row in result:
-        id = row["__key"]
         city = row["this"]
         print(
-            "| {:4d} | {:20s} | {:20s} | {:15d} |".format(
-                id, city.country, city.city, city.population
-            )
+            f"| {row['__key']:>4} | {city.country:<20} | {city.city:<20} | {city.population:<15} |"
         )
 
     print(
-        """
-    !! Hint !! You can execute your SQL queries on your Viridian cluster over the management center.
-    1. Go to 'Management Center' of your Hazelcast Viridian cluster.
-    2. Open the 'SQL Browser'.
-    3. Try to execute 'SELECT * FROM cities'.
-    """
+        "\n!! Hint !! You can execute your SQL queries on your Viridian cluster over the management center.",
+        "1. Go to 'Management Center' of your Hazelcast Viridian cluster.",
+        "2. Open the 'SQL Browser'.",
+        "3. Try to execute 'SELECT * FROM cities'.",
+        sep="\n",
     )
 
 
 logging.basicConfig(level=logging.INFO)
+
 client = hazelcast.HazelcastClient(
     cluster_name="YOUR_CLUSTER_NAME",
     cloud_discovery_token="YOUR_CLUSTER_DISCOVERY_TOKEN",
@@ -149,8 +139,9 @@ client = hazelcast.HazelcastClient(
     ssl_certfile=os.path.abspath("cert.pem"),
     ssl_keyfile=os.path.abspath("key.pem"),
     ssl_password="YOUR_SSL_PASSWORD",
-    compact_serializers=[CitySeriazlizer()],
+    compact_serializers=[CitySerializer()],
 )
+
 print("Connection Successful!")
 
 create_mapping(client)
