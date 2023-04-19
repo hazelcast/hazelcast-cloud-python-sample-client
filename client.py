@@ -1,252 +1,145 @@
+"""
+ Copyright (c) 2008-2023, Hazelcast, Inc. All Rights Reserved.
+ 
+ Licensed under the Apache License, Version 2.0 (the "License")
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+ 
+ http://www.apache.org/licenses/LICENSE-2.0
+ 
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ """
+
 import logging
-import random
+import typing
 
 import hazelcast
-from hazelcast.core import HazelcastJsonValue
-from hazelcast.discovery import HazelcastCloudDiscovery
+from hazelcast import HazelcastClient
+from hazelcast.serialization.api import CompactReader, CompactSerializer, CompactWriter
 
 """
-This is boilerplate application that configures client to connect Hazelcast Cloud cluster.
+A sample application that configures a client to connect to a Hazelcast Viridian cluster,
+and to then insert and fetch data with SQL, thus testing that the connection to
+the Hazelcast Viridian cluster is successful.
 
-See: https://docs.hazelcast.com/cloud/python-client
+See: https://docs.hazelcast.com/cloud/get-started
 """
 
 
-def city(country: str, name: str, population: int) -> HazelcastJsonValue:
-    return HazelcastJsonValue({
-        "country": country,
-        "city": name,
-        "population": population,
-    })
+class City:
+    def __init__(self, country: str, city: str, population: int) -> None:
+        self.country = country
+        self.city = city
+        self.population = population
 
 
-def country(code: str, name: str) -> HazelcastJsonValue:
-    return HazelcastJsonValue({
-        "isoCode": code,
-        "country": name,
-    })
+class CitySerializer(CompactSerializer[City]):
+    def read(self, reader: CompactReader) -> City:
+        city = reader.read_string("city")
+        country = reader.read_string("country")
+        population = reader.read_int32("population")
+        return City(country, city, population)
+
+    def write(self, writer: CompactWriter, obj: City) -> None:
+        writer.write_string("country", obj.country)
+        writer.write_string("city", obj.city)
+        writer.write_int32("population", obj.population)
+
+    def get_type_name(self) -> str:
+        return "city"
+
+    def get_class(self) -> typing.Type[City]:
+        return City
 
 
-def map_example(client: hazelcast.HazelcastClient):
-    """
-    This example shows how to work with Hazelcast maps.
-    """
-    cities = client.get_map("cities").blocking()
-    cities.put("1", city("United Kingdom", "London", 9_540_576))
-    cities.put("2", city("United Kingdom", "Manchester", 2_770_434))
-    cities.put("3", city("United States", "New York", 19_223_191))
-    cities.put("4", city("United States", "Los Angeles", 3_985_520))
-    cities.put("5", city("Turkey", "Ankara", 5_309_690))
-    cities.put("6", city("Turkey", "Istanbul", 15_636_243))
-    cities.put("7", city("Brazil", "Sao Paulo", 22_429_800))
-    cities.put("8", city("Brazil", "Rio de Janeiro", 13_634_274))
-    map_size = cities.size()
-    print(f"'cities' map now contains {map_size} entries.")
-    print("-"*20)
-
-
-def sql_example(client: hazelcast.HazelcastClient):
-    sql_service = client.sql
-    create_mapping_for_capitals(sql_service)
-    clear_capitals(sql_service)
-    populate_capitals(sql_service)
-    select_all_capitals(sql_service)
-    select_capital_names(sql_service)
-
-
-def create_mapping_for_capitals(sql_service: hazelcast.client.SqlService):
-    print("Creating a mapping...")
-    # See: https://docs.hazelcast.com/hazelcast/5.1/sql/mapping-to-maps
-    mapping_query = '''
-    CREATE OR REPLACE MAPPING capitals
-        TYPE IMap
-        OPTIONS (
-            'keyFormat' = 'varchar',
-            'valueFormat' = 'varchar'
-        )
-    '''
-    sql_service.execute(mapping_query).result()
-    print("-" * 20)
-
-
-def clear_capitals(sql_service: hazelcast.client.SqlService):
-    print("Deleting data via SQL...")
-    sql_service.execute("DELETE FROM capitals").result()
-    print("The data has been deleted successfully.")
-    print("-" * 20)
-
-
-def populate_capitals(sql_service: hazelcast.client.SqlService):
-    print("Inserting data via SQL...")
-    insert_query = '''
-        INSERT INTO capitals VALUES
-            ('Australia','Canberra'),
-            ('Croatia','Zagreb'),
-            ('Czech Republic','Prague'),
-            ('England','London'),
-            ('Turkey','Ankara'),
-            ('United States','Washington, DC');
-    '''
-    sql_service.execute(insert_query).result()
-    print("-" * 20)
-
-
-def select_all_capitals(sql_service: hazelcast.client.SqlService):
-    print("Retrieving all the data via SQL...")
-    result = sql_service.execute("SELECT * FROM capitals").result()
-    for row in result:
-        country = row.get_object_with_index(0)
-        city = row.get_object_with_index(1)
-        print(f"{country} - {city}")
-    print("-" * 20)
-
-
-def select_capital_names(sql_service: hazelcast.client.SqlService):
-    print("Retrieving the capital name via SQL...")
-    result = sql_service.execute("SELECT __key, this FROM capitals WHERE __key = ?", "United States").result()
-    for row in result:
-        country = row.get_object("__key")
-        city = row.get_object("__key")
-        print(f"Country name: {country}; Capital name: {city}")
-    print("-" * 20)
-
-
-def json_serialization_example(client):
-    sql_service = client.sql
-    create_mapping_for_countries(sql_service)
-    populate_countries_map(client)
-    select_all_countries(sql_service)
-    create_mapping_for_cities(sql_service)
-    populate_cities(client)
-    select_cities_by_country(sql_service, "AU")
-    select_countries_and_cities(sql_service)
-
-
-def create_mapping_for_countries(sql_service: hazelcast.client.SqlService):
-    # see: https://docs.hazelcast.com/hazelcast/5.1/sql/mapping-to-maps#json-objects
-    print("Creating mapping for countries...")
-
+def create_mapping(client: HazelcastClient) -> None:
+    print("Creating the mapping...", end="")
+    # See: https://docs.hazelcast.com/hazelcast/latest/sql/mapping-to-maps
     mapping_query = """
-        CREATE OR REPLACE MAPPING country(
-            __key VARCHAR, 
-            isoCode VARCHAR, 
-            country VARCHAR
+        CREATE OR REPLACE MAPPING 
+            cities (
+                __key INT,                                        
+                country VARCHAR,
+                city VARCHAR,
+                population INT) TYPE IMAP
+            OPTIONS ( 
+                'keyFormat' = 'int',
+                'valueFormat' = 'compact',
+                'valueCompactTypeName' = 'city')
+    """
+    client.sql.execute(mapping_query).result()
+    print("OK.")
+
+
+def populate_cities(client: HazelcastClient) -> None:
+    print("Inserting data via SQL...", end="")
+
+    insert_query = """
+        INSERT INTO cities 
+        (__key, city, country, population) VALUES
+        (1, 'London', 'United Kingdom', 9540576),
+        (2, 'Manchester', 'United Kingdom', 2770434),
+        (3, 'New York', 'United States', 19223191),
+        (4, 'Los Angeles', 'United States', 3985520),
+        (5, 'Istanbul', 'Türkiye', 15636243),
+        (6, 'Ankara', 'Türkiye', 5309690),
+        (7, 'Sao Paulo ', 'Brazil', 22429800)
+    """
+
+    try:
+        client.sql.execute(insert_query).result()
+        print("OK.")
+    except Exception as e:
+        print(f"FAILED: {e!s}.")
+
+    print("Putting a city into 'cities' map...", end="")
+
+    # Let's also add a city as object.
+    cities = client.get_map("cities").blocking()
+    cities.put(8, City("Brazil", "Rio de Janeiro", 13634274))
+    print("OK.")
+
+
+def fetch_cities_via_sql(client: HazelcastClient) -> None:
+    print("Fetching cities via SQL...", end="")
+    result = client.sql.execute("SELECT __key, this FROM cities").result()
+    print("OK.")
+
+    print("--Results of 'SELECT __key, this FROM cities'")
+    print(f"| {'id':>4} | {'country':<20} | {'city':<20} | {'population':<15} |")
+
+    for row in result:
+        city = row["this"]
+        print(
+            f"| {row['__key']:>4} | {city.country:<20} | {city.city:<20} | {city.population:<15} |"
         )
-        TYPE IMap OPTIONS(
-            'keyFormat' = 'varchar',
-            'valueFormat' = 'json-flat'
-        );
-    """
-    sql_service.execute(mapping_query).result()
-    print("Mapping for countries has been created.")
-    print("-" * 20)
 
-
-def populate_countries_map(client: hazelcast.HazelcastClient):
-    # see: https://docs.hazelcast.com/hazelcast/5.1/data-structures/creating-a-map#writing-json-to-a-map
-    print("Populating 'countries' map with JSON values...")
-    countries = client.get_map("country").blocking()
-    countries.put("AU", country("AU", "Australia"))
-    countries.put("EN", country("EN", "England"))
-    countries.put("US", country("US", "United States"))
-    countries.put("CZ", country("CZ", "Czech Republic"))
-    print("The 'countries' map has been populated.")
-    print("-" * 20)
-
-
-def select_all_countries(sql_service: hazelcast.client.SqlService):
-    sql = "SELECT c.country from country c"
-    print(f"Select all countries with sql = {sql}", sql)
-    result = sql_service.execute(sql).result()
-    for row in result:
-        print(f"country = {row['country']}")
-    print("-" * 20)
-
-
-def create_mapping_for_cities(sql_service: hazelcast.client.SqlService):
-    # see: https://docs.hazelcast.com/hazelcast/5.1/sql/mapping-to-maps#json-objects
-    print("Creating mapping for cities...")
-    mapping_sql = """
-        CREATE OR REPLACE MAPPING city(
-            __key INT, 
-            country VARCHAR, 
-            city VARCHAR, 
-            population BIGINT
-        ) 
-        TYPE IMap OPTIONS (
-            'keyFormat' = 'int',
-            'valueFormat' = 'json-flat'
-        );
-    """
-
-    sql_service.execute(mapping_sql).result()
-    print("Mapping for cities has been created.")
-    print("-" * 20)
-
-
-def populate_cities(client: hazelcast.HazelcastClient):
-    # see: https://docs.hazelcast.com/hazelcast/5.1/data-structures/creating-a-map#writing-json-to-a-map
-    print("Populating 'city' map with JSON values...")
-    cities = client.get_map("city").blocking()
-    cities.put(1, city("AU", "Canberra", 467_194))
-    cities.put(2, city("CZ", "Prague", 1_318_085))
-    cities.put(3, city("EN", "London", 9_540_576))
-    cities.put(4, city("US", "Washington, DC", 7_887_965))
-    print("The 'city' map has been populated.")
-    print("-"*20)
-
-
-def select_cities_by_country(sql_service: hazelcast.client.SqlService, country: str):
-    sql = "SELECT city, population FROM city where country=?"
-    print("-" * 20)
-    print(f"Select city and population with sql = {sql}")
-    result = sql_service.execute(sql, country).result()
-    for row in result:
-        print(f"city = {row['city']}, population = {row['population']}")
-    print("-" * 20)
-
-
-def select_countries_and_cities(sql_service: hazelcast.client.SqlService):
-    sql = """
-        SELECT c.isoCode, c.country, t.city, t.population
-        FROM country c
-        JOIN city t
-        ON c.isoCode = t.country;
-    """
-    print("Select country and city data in query that joins tables")
-    print("%4s | %15s | %20s | %15s |" % ("iso", "country", "city", "population"))
-    result = sql_service.execute(sql).result()
-    for row in result:
-        print("%4s | %15s | %20s | %15s |" %
-              (row["isoCode"], row["country"], row["city"], row["population"]))
-    print("-" * 20)
-
-
-def nonstop_map_example(client: hazelcast.HazelcastClient):
-    print("Now the map named 'map' will be filled with random entries.")
-    map = client.get_map("map").blocking()
-    iteration_counter = 0
-    while True:
-        random_key = random.randint(0, 99_999)
-        map.put(f"key-{random_key}", f"value-{random_key}")
-        map.get(f"key-{random.randint(0, 99_999)}")
-        iteration_counter += 1
-        if iteration_counter == 10:
-            iteration_counter = 0
-            print(f"Current map size: {map.size()}")
+    print(
+        "\n!! Hint !! You can execute your SQL queries on your Viridian cluster over the management center.",
+        "1. Go to 'Management Center' of your Hazelcast Viridian cluster.",
+        "2. Open the 'SQL Browser'.",
+        "3. Try to execute 'SELECT * FROM cities'.",
+        sep="\n",
+    )
 
 
 logging.basicConfig(level=logging.INFO)
-HazelcastCloudDiscovery._CLOUD_URL_BASE = "YOUR_DISCOVERY_URL"
+
 client = hazelcast.HazelcastClient(
     cluster_name="YOUR_CLUSTER_NAME",
     cloud_discovery_token="YOUR_CLUSTER_DISCOVERY_TOKEN",
     statistics_enabled=True,
+    compact_serializers=[CitySerializer()],
 )
+
 print("Connection Successful!")
 
-map_example(client)
-# sql_example(client)
-# json_serialization_example(client)
-# nonstop_map_example(client)
+create_mapping(client)
+populate_cities(client)
+fetch_cities_via_sql(client)
+
 client.shutdown()
