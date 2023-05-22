@@ -20,6 +20,7 @@ import typing
 
 import hazelcast
 from hazelcast import HazelcastClient
+from hazelcast.discovery import HazelcastCloudDiscovery
 from hazelcast.serialization.api import CompactReader, CompactSerializer, CompactWriter
 
 """
@@ -129,6 +130,7 @@ def fetch_cities_via_sql(client: HazelcastClient) -> None:
 
 
 logging.basicConfig(level=logging.INFO)
+HazelcastCloudDiscovery._CLOUD_URL_BASE = "YOUR_DISCOVERY_URL"
 
 client = hazelcast.HazelcastClient(
     cluster_name="YOUR_CLUSTER_NAME",
