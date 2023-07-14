@@ -76,6 +76,13 @@ def create_mapping(client: HazelcastClient) -> None:
 
 
 def populate_cities(client: HazelcastClient) -> None:
+    print("Cleaning up the 'cities' map...", end="")
+    try:
+        client.sql.execute("DELETE FROM cities").result()
+        print("OK.")
+    except Exception as e:
+        print(f"FAILED: {e!s}.")
+
     print("Inserting data via SQL...", end="")
 
     insert_query = """
