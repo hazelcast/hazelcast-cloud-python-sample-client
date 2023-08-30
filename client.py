@@ -126,10 +126,11 @@ def fetch_cities_via_sql(client: HazelcastClient) -> None:
         )
 
     print(
-        "\n!! Hint !! You can execute your SQL queries on your Viridian cluster over the management center.",
-        "1. Go to 'Management Center' of your Hazelcast Viridian cluster.",
-        "2. Open the 'SQL Browser'.",
-        "3. Try to execute 'SELECT * FROM cities'.",
+        "\n!! Hint !! You can execute your SQL queries on your Viridian cluster using the 'SQL Broswer' UI.",
+        "1. Start one of the preloaded demos in your Trial Experience.",
+        "2. This will open the 'SQL Browser'.",
+        "3. Add a new Tab.",
+        "4. Try to execute 'SELECT * FROM cities'.",
         sep="\n",
     )
 
