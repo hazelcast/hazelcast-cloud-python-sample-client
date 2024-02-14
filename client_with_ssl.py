@@ -24,9 +24,9 @@ from hazelcast.discovery import HazelcastCloudDiscovery
 from hazelcast.serialization.api import CompactReader, CompactSerializer, CompactWriter
 
 """
-A sample application that configures a client to connect to a Hazelcast Viridian cluster
+A sample application that configures a client to connect to a Hazelcast Cloud cluster
 over TLS, and to then insert and fetch data with SQL, thus testing that the connection to
-the Hazelcast Viridian cluster is successful.
+the Hazelcast Cloud cluster is successful.
 
 See: https://docs.hazelcast.com/cloud/get-started
 """
@@ -128,7 +128,7 @@ def fetch_cities_via_sql(client: HazelcastClient) -> None:
         )
 
     print(
-        "\n!! Hint !! You can execute your SQL queries on your Viridian cluster using the 'SQL Broswer' UI.",
+        "\n!! Hint !! You can execute your SQL queries on your Hazelcast Cloud cluster using the 'SQL Broswer' UI.",
         "1. Start one of the preloaded demos in your Trial Experience.",
         "2. This will open the 'SQL Browser'.",
         "3. Add a new Tab.",
